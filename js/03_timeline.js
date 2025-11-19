@@ -167,23 +167,73 @@ function buildTimeline() {
                         </label>
                     </div>
                 </div>
-                <p style="margin-top: 40px; font-size: 16px; color: #6c757d;">Press the <kbd>Spacebar</kbd> to continue after entering your information.</p>
+                <div style="margin-top: 40px;">
+                    <button id="continue-btn" style="
+                        background-color: #ccc; 
+                        color: #666; 
+                        padding: 12px 30px; 
+                        border: none; 
+                        border-radius: 8px; 
+                        font-size: 16px; 
+                        cursor: not-allowed; 
+                        transition: all 0.3s ease;
+                        " disabled>
+                        Continue to Experiment
+                    </button>
+                    <p style="margin-top: 15px; font-size: 14px; color: #999;">Please complete both fields above to continue</p>
+                </div>
             </div>
         `,
-        choices: [" "],
+        choices: "NO_KEYS",  // 禁用键盘响应，只能通过按钮继续
         on_load: () => {
-            document.body.style.backgroundColor = "#f8f9fa"; // 白色背景
+            document.body.style.backgroundColor = "#f8f9fa";
             const nameInput = document.getElementById("subject-name");
+            const continueBtn = document.getElementById("continue-btn");
+            let nameEntered = false;
+            let genderSelected = false;
+
+            // 检查是否可以启用继续按钮
+            const checkFormComplete = () => {
+                if (nameEntered && genderSelected) {
+                    continueBtn.style.backgroundColor = "#007cba";
+                    continueBtn.style.color = "white";
+                    continueBtn.style.cursor = "pointer";
+                    continueBtn.disabled = false;
+                    continueBtn.querySelector('~ p').textContent = "Click to continue";
+                    continueBtn.querySelector('~ p').style.color = "#007cba";
+                } else {
+                    continueBtn.style.backgroundColor = "#ccc";
+                    continueBtn.style.color = "#666";
+                    continueBtn.style.cursor = "not-allowed";
+                    continueBtn.disabled = true;
+                    continueBtn.querySelector('~ p').textContent = "Please complete both fields above to continue";
+                    continueBtn.querySelector('~ p').style.color = "#999";
+                }
+            };
+
+            // 姓名输入监听
             nameInput.addEventListener("input", (e) => {
                 GLOBAL_DATA.subjectName = e.target.value.trim();
+                nameEntered = GLOBAL_DATA.subjectName.length > 0;
+                checkFormComplete();
             });
             
-            // 添加性别选择监听
+            // 性别选择监听
             const genderInputs = document.querySelectorAll('input[name="gender"]');
             genderInputs.forEach(input => {
                 input.addEventListener("change", (e) => {
                     GLOBAL_DATA.subjectGender = e.target.value;
+                    genderSelected = true;
+                    checkFormComplete();
                 });
+            });
+
+            // 继续按钮点击事件
+            continueBtn.addEventListener("click", () => {
+                if (!continueBtn.disabled) {
+                    // 结束当前trial
+                    jsPsych.finishTrial();
+                }
             });
         },
         on_finish: () => {
@@ -193,7 +243,6 @@ function buildTimeline() {
             if (!GLOBAL_DATA.subjectGender) {
                 GLOBAL_DATA.subjectGender = "Not selected";
             }
-            // 修正：将姓名和性别信息保存到第一行
             GLOBAL_DATA.experimentLog[0] = `Subject Name: ${GLOBAL_DATA.subjectName}\tGender: ${GLOBAL_DATA.subjectGender}`;
             saveBackupData();
         }
@@ -206,7 +255,7 @@ function buildTimeline() {
         stimulus: `
             <div style="text-align: center; margin-top: 60px;">
                 <img src="instruction.png" style="max-width: 900px; width: 100%; height: auto; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);">
-                <p style="margin-top: 32px; font-size: 18px; color: #007cba;">Press the <kbd>Spacebar</kbd> to start the experiment.</p>
+                <p style="margin-top: 32px; font-size: 18px; color: #007cba;">Press the <kbd>Space</kbd> to start the experiment.</p>
             </div>
         `,
         choices: [" "],
@@ -261,7 +310,7 @@ function buildTimeline() {
             type: jsPsychImageKeyboardResponse,
             stimulus: currentImage.imageUrl,
             choices: "NO_KEYS",  // 初始禁用所有按键
-            prompt: `<div id="image-prompt" style="text-align: center; margin-top: 20px; color: #ffffff; font-size: 16px; visibility: hidden;">Press <kbd style="background: #ffffff; color: #333;">Space</kbd> to start evaluation</div>`,
+            prompt: `<div id="image-prompt" style="text-align: center; margin-top: 20px; color: #ffffff; font-size: 16px; visibility: hidden;">按 <kbd style="background: #ffffff; color: #333;">空格键</kbd> 开始评价</div>`,
             stimulus_height: 500,
             stimulus_width: 800,
             trial_duration: 3000,  // 3秒后自动结束此试次
@@ -285,8 +334,8 @@ function buildTimeline() {
         // 子环节4：维度1 - 美观度评分
         const beautyRatingTrial = {
             type: CustomRatingPlugin,
-            labelLeft: "Very ugly",
-            labelRight: "Very beautiful",
+            labelLeft: "Very ugly (0)",
+            labelRight: "Very beautiful (1)",
             prompt: "Please evaluate the aesthetic quality of the image",
             post_trial_gap: 300,
             on_finish: (data) => {
